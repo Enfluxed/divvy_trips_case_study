@@ -1,0 +1,135 @@
+---
+title: "Cyclistic Analysis Summary"
+author: "Cole Espinola"
+date: "2023-09-13"
+output: html_document
+---
+
+## Enviroment Setup
+```{r loading packages}
+library(tidyverse)
+```
+
+## Data Loading
+The following data is a cleaned, transformed, and merged version of the data from [Divvy Trips Data](https://divvy-tripdata.s3.amazonaws.com/index.html) from 
+May 2023 to July 2023. The data was transformed by adding the ride length of each ride in minutes and the day of the week each ride started with Sunday as 1, Monday as 2, and so on.
+```{r data loading}
+trips_05_to_07_2023 <- read_csv("~/Coursera Capstone Project/data/clean_data/clean_new_trips_05_to_07_2023.csv")
+```
+
+### Sample of Data
+The following is a preview of the column names of the data set:
+```{r head data}
+head(trips_05_to_07_2023)
+```
+
+We will also now take a closer look at all of the column names of the data:
+```{r column  names}
+colnames(trips_05_to_07_2023)
+```
+
+
+## Interrogating the Data
+We will now begin examining our data by asking the following questions:
+
+### Question 1: what day do annual members and casual riders use cyclistic bikes the most?
+```{r q1 dataframe}
+most_popular_day <- trips_05_to_07_2023 %>% group_by(day_of_week) %>%
+  summarise(member = sum(member_casual == "member"), casual = sum(member_casual == "casual"))
+most_popular_day
+```
+
+Corresponding visualizations:
+```{r q1 member plot}
+week_names <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+ggplot(data = most_popular_day, aes(x = factor(day_of_week), y = member)) + geom_bar(stat = "identity", fill='#72B8AD') +
+  labs(title = "Annual Member Ridership by Day of the Week", x = "Day of the Week", y = "Count",
+       caption = "Data from: May 2023 to July 2023") +
+  scale_x_discrete(labels = week_names) 
+```
+
+Clearly, Thursday was the day of the week that annual Cyclistic members rode the most with the weekdays in particular being more popular than the weekends.
+
+```{r q1 casual plot}
+week_names <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+ggplot(data = most_popular_day, aes(x = factor(day_of_week), y = casual)) + geom_bar(stat = "identity", fill='#BF4B43') +
+  labs(title = "Casual Ridership by Day of the Week", x = "Day of the Week", y = "Count",
+       caption = "Data from: May 2023 to July 2023") +
+  scale_x_discrete(labels = week_names) + scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+```
+
+Meanwhile, Saturday was the day of the week that casual riders rode the most with weekday being far less popular than weekends.
+
+### Question 2: how many of the rides in past three months are from members and how many from casual riders?
+```{r q2 table}
+mem_cas_ride_count <- trips_05_to_07_2023 %>% group_by(member_casual) %>%
+summarise(values = n())
+mem_cas_ride_count
+```
+
+```{r q2 plot}
+ggplot(data = trips_05_to_07_2023, aes(x = member_casual)) + geom_bar(fill='#72B8AD') +
+  labs(title = "Number of Rides by Casual Riders vs Annual Member Riders", x = "Membership Type", y = "Count",
+       caption = "Data from: May 2023 to July 2023")
+```
+
+As seen the vast majority of rides came from annual member as compared to casual riders.
+
+### Question 3: what is the most popular start staion for annual members vs casual riders?
+As sorted by most popular among members (descending):
+```{r q3 table member}
+popular_member_start_station <- trips_05_to_07_2023 %>% group_by(start_station_name) %>%
+  summarise(member = sum(member_casual == "member")) %>%
+  arrange(desc(member))
+popular_member_start_station
+```
+
+As sorted by most popular among casual riders (descending):
+```{r q3 table casual}
+popular_casual_start_station <- trips_05_to_07_2023 %>% group_by(start_station_name) %>%
+  summarise(casual = sum(member_casual == "casual")) %>%
+  arrange(desc(casual))
+popular_casual_start_station
+```
+
+Although there are more rides from annual members, there are more than twice as many rides from the most popular casual rider starting station
+than the most popular member starting station.
+
+### Question 4: how long do annual members rides tend to last compared to casual riders?
+The mean annual member and casual rider ride length in minutes:
+```{r q4 mean table}
+mean_mem_cas <- trips_05_to_07_2023 %>% group_by(member_casual) %>%
+  summarise(mean_type = mean(ride_length_min))
+mean_mem_cas
+```
+
+The distribution of ride duration in minutes (with mean line):
+```{r q4 histogram, warning=FALSE}
+ggplot(data = trips_05_to_07_2023, aes(x = ride_length_min, color = member_casual)) +
+  geom_histogram(binwidth = 1, fill = "white") +
+  geom_vline(data = mean_mem_cas, aes(xintercept = mean_type, color = member_casual), linetype = "dashed", size = 1) +
+  xlim(0, 60) + facet_wrap(~member_casual) +
+  labs(title = "Ride Length Distribution of Casual Riders and Annual Members", x = "Ride Length (Minutes)", y = "Count",
+       caption = "Data from: May 2023 to July 2023") +
+  guides(color = guide_legend(title = "Member Type"))
+```
+
+As seen above, generally annual members tend to take shorter rides than casual riders.
+
+## Question 5: what is the average ride length by day of the week?
+As seen via table:
+```{r q5 mean table}
+mean_ride_day <- trips_05_to_07_2023 %>% group_by(day_of_week) %>%
+  summarise(mean_ride_length = mean(ride_length_min))
+mean_ride_day
+```
+
+As seen via bar chart:
+
+```{r q5 bar plot}
+ggplot(data = mean_ride_day, aes(x = factor(day_of_week), y = mean_ride_length)) + geom_bar(stat = "identity", fill='#72B8AD') +
+  labs(title = "Mean Ride Length by Day of the Week", x = "Day of the Week", y = "Mean Ride Length (minutes)",
+       caption = "Data from: May 2023 to July 2023") +
+  scale_x_discrete(labels = week_names) 
+```
+
